@@ -7,11 +7,12 @@ Basic how this works snippet: :+1:
 WebServer app = new WebServer(3001);
 
 app.get("/test/hello", (HttpListenerRequest request)=> {
-	return string.Format("<HTML><BODY>My web page.<br>{0}</BODY></HTML>", param);
+	return "<XML><MESSAGE>It works!</MESSAGE></XML>";
 });
 
 app.post("/test/hello", (HttpListenerRequest request) => {
-	return string.Format("<HTML><BODY>My web page</BODY></HTML>", param);
+	string param = request.QueryString["query"];
+	return string.Format("<XML><MESSAGE>Your query is below.</MESSAGE><QUERY></QUERY></XML>", param);
 });
 
 app.Start();
