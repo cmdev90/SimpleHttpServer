@@ -17,11 +17,7 @@ namespace HttpServer
     {
         private HttpListener httpSocket = new HttpListener();
         private Dictionary<string, Func<HttpListenerRequest, string>>[] Routes = new Dictionary<string, Func<HttpListenerRequest, string>>[2];
-        
-        public string prefix {
-            get { return prefix; } 
-            private set { } 
-        }
+        private string prefix;
 
         public WebServer() : this(8080) { }
 
