@@ -7,7 +7,7 @@ using System.Collections.Generic;
 
 namespace HttpServer
 {
-    public class HttpMethods
+    public class WebServerMethod
     {
         public static int GET = 0;
         public static int POST = 1;
@@ -33,12 +33,12 @@ namespace HttpServer
 
         public void get(string path, Func<HttpListenerRequest, string> method)
         {
-            this.AddRoute(HttpMethods.GET, path, method);
+            this.AddRoute(WebServerMethod.GET, path, method);
         }
 
         public void post(string url, Func<HttpListenerRequest, string> method)
         {
-            this.AddRoute(HttpMethods.POST, url, method);
+            this.AddRoute(WebServerMethod.POST, url, method);
         }
 
         public void Start()
@@ -62,10 +62,10 @@ namespace HttpServer
                                 switch (httpContext.Request.HttpMethod)
                                 {
                                     case "GET":
-                                        activeMethod = this.FindRouteFunction(HttpMethods.GET, httpContext.Request.Url.AbsolutePath);
+                                        activeMethod = this.FindRouteFunction(WebServerMethod.GET, httpContext.Request.Url.AbsolutePath);
                                         break;
                                     case "POST":
-                                        activeMethod = this.FindRouteFunction(HttpMethods.POST, httpContext.Request.Url.AbsolutePath);
+                                        activeMethod = this.FindRouteFunction(WebServerMethod.POST, httpContext.Request.Url.AbsolutePath);
                                         break;
                                     default:
                                         activeMethod = MethodNotImplemented;
