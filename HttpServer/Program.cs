@@ -29,26 +29,6 @@ namespace SimpleWebServer
             app.Stop();
         }
 
-        //public static string SendResponse(HttpListenerRequest request)
-        //{
-
-        //    String param = request.QueryString["Username"]; 
-        //    return string.Format("<HTML><BODY>My web page.<br>{0}</BODY></HTML>", DateTime.Now);
-        //}
-
-        //public static string SendResponse2(HttpListenerRequest request)
-        //{
-
-        //    String param = request.QueryString["Username"];
-        //    return string.Format("<HTML><BODY>My web page.<br>{0}</BODY></HTML>", param);
-        //}
-
-        //public static string SendResponse3(HttpListenerRequest request)
-        //{
-
-        //    String param = request.QueryString["Username"];
-        //    return string.Format("<HTML><BODY>My web page</BODY></HTML>", param);
-        //}
     }
 }
 
