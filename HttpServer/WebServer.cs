@@ -36,6 +36,21 @@ namespace HttpServer
         }
     }
 
+    public class WebServerRequest
+    {
+        private HttpListenerRequest Request;
+
+        public WebServerRequest (HttpListenerContext context)
+        {
+            this.Request = context.Request;
+        }
+
+        public string param(string key)
+        {
+            return this.Request.QueryString[key];
+        }
+    }
+
     public class WebServer
     {
         private HttpListener httpSocket = new HttpListener();
