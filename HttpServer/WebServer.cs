@@ -13,6 +13,29 @@ namespace HttpServer
         public static int POST = 1;
     }
 
+    public class WebServerResponse
+    {
+
+        private HttpListenerResponse Response;
+
+        public WebServerResponse (HttpListenerContext context)
+        {
+            this.Response = context.Response;
+        }
+
+        public void send(string message)
+        {
+            byte[] buf = Encoding.UTF8.GetBytes(message);
+            this.Response.ContentLength64 = buf.Length;
+            this.Response.OutputStream.Write(buf, 0, buf.Length);
+        }
+
+        public void setEncoding(string MIMEtype)
+        {
+            this.Response.ContentType = MIMEtype;
+        }
+    }
+
     public class WebServer
     {
         private HttpListener httpSocket = new HttpListener();
