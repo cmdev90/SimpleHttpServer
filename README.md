@@ -6,15 +6,18 @@ Basic how this works snippet: :+1:
 ```csharp
 WebServer app = new WebServer(3001);
 
-app.get("/test/hello", (HttpListenerRequest request) =>
+app.get("/", (WebServerRequest req, WebServerResponse res) =>
 {
-    return "<XML><MESSAGE>It works!</MESSAGE></XML>";
+    res.setMIMEtype("application/xml");
+    res.send("<XML><MESSAGE>It works!</MESSAGE></XML>");
 });
 
-app.post("/test/hello", (HttpListenerRequest request) =>
+app.post("/", (WebServerRequest req, WebServerResponse res) =>
 {
-    string param = request.QueryString["query"];
-    return string.Format("<XML><MESSAGE>Your query is below.</MESSAGE><QUERY>{0}</QUERY></XML>", param);
+    string query = req.param("query");
+
+    res.setMIMEtype("application/xml");
+    res.send(string.Format("<XML><MESSAGE>Your query is below.</MESSAGE><QUERY>{0}</QUERY></XML>", query));
 });
 
 app.Start();
