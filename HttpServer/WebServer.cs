@@ -25,14 +25,28 @@ namespace HttpServer
 
         public void send(string message)
         {
-            byte[] buf = Encoding.UTF8.GetBytes(message);
-            this.Response.ContentLength64 = buf.Length;
-            this.Response.OutputStream.Write(buf, 0, buf.Length);
+            try
+            {
+                byte[] buf = Encoding.UTF8.GetBytes(message);
+                this.Response.ContentLength64 = buf.Length;
+                this.Response.OutputStream.Write(buf, 0, buf.Length);
+                Console.WriteLine(string.Format("[OUT] Sending {0}b", this.Response.ContentLength64));
+            }
+            catch { } // suppress any exceptions
+            finally
+            {
+                this.Response.OutputStream.Close(); // always close the stream
+            }
         }
 
-        public void setEncoding(string MIMEtype)
+        public void setMIMEtype(string MIMEtype)
         {
             this.Response.ContentType = MIMEtype;
+        }
+
+        public HttpListenerResponse getMethods()
+        {
+            return this.Response;
         }
     }
 
@@ -49,12 +63,17 @@ namespace HttpServer
         {
             return this.Request.QueryString[key];
         }
+
+        public HttpListenerRequest getMethods()
+        {
+            return this.Request;
+        }
     }
 
     public class WebServer
     {
         private HttpListener httpSocket = new HttpListener();
-        private Dictionary<string, Func<HttpListenerRequest, string>>[] Routes = new Dictionary<string, Func<HttpListenerRequest, string>>[2];
+        private Dictionary<string, Action<WebServerRequest, WebServerResponse>>[] ActionRoutes = new Dictionary<string, Action<WebServerRequest, WebServerResponse>>[2];
         private string prefix;
 
         public WebServer() : this(8080) { }
@@ -65,24 +84,25 @@ namespace HttpServer
                 throw new NotSupportedException("Needs Windows XP SP2, Server 2003 or later.");
 
             // URI prefixes are required, for example "http://localhost:8080/index/".
-            this.prefix = string.Format("http://localhost:{0}/", port);
+            this.prefix = string.Format("http://*:{0}/", port);
             httpSocket.Prefixes.Add(prefix);
         }
 
-        public void get(string path, Func<HttpListenerRequest, string> method)
+
+        public void get(string path, Action<WebServerRequest, WebServerResponse> method)
         {
             this.AddRoute(WebServerMethod.GET, path, method);
         }
 
-        public void post(string url, Func<HttpListenerRequest, string> method)
+        public void post(string url, Action<WebServerRequest, WebServerResponse> method)
         {
             this.AddRoute(WebServerMethod.POST, url, method);
         }
 
         public void Start()
         {
-
             httpSocket.Start();
+            Console.WriteLine(string.Format("Server listenting on {0}", this.prefix));
 
             ThreadPool.QueueUserWorkItem((o) =>
             {
@@ -93,35 +113,27 @@ namespace HttpServer
                         ThreadPool.QueueUserWorkItem((context) =>
                         {
                             var httpContext = context as HttpListenerContext;
-                            Func<HttpListenerRequest, string> activeMethod = null;
 
-                            try
-                            {
-                                switch (httpContext.Request.HttpMethod)
-                                {
-                                    case "GET":
-                                        activeMethod = this.FindRouteFunction(WebServerMethod.GET, httpContext.Request.Url.AbsolutePath);
-                                        break;
-                                    case "POST":
-                                        activeMethod = this.FindRouteFunction(WebServerMethod.POST, httpContext.Request.Url.AbsolutePath);
-                                        break;
-                                    default:
-                                        activeMethod = MethodNotImplemented;
-                                        throw new Exception();
-                                }
+                            Console.WriteLine(string.Format("[IN] {0} {1} ({2})", httpContext.Request.HttpMethod, httpContext.Request.Url, httpContext.Request.ContentLength64));
 
-                                string response = activeMethod(httpContext.Request);
-                                httpContext.Response.ContentType = "application/xml";
-                                byte[] buf = Encoding.UTF8.GetBytes(response);
-                                httpContext.Response.ContentLength64 = buf.Length;
-                                httpContext.Response.OutputStream.Write(buf, 0, buf.Length);
-                            }
-                            catch { } // suppress any exceptions
-                            finally
+                            Action<WebServerRequest, WebServerResponse> activeMethod = null;
+
+                            switch (httpContext.Request.HttpMethod)
                             {
-                                // always close the stream
-                                httpContext.Response.OutputStream.Close();
+                                case "GET":
+                                    activeMethod = this.FindRouteFunction(WebServerMethod.GET, httpContext.Request.Url.AbsolutePath);
+                                    break;
+                                case "POST":
+                                    activeMethod = this.FindRouteFunction(WebServerMethod.POST, httpContext.Request.Url.AbsolutePath);
+                                    break;
+                                default:
+                                    activeMethod = MethodNotImplemented;
+                                    throw new Exception();
                             }
+
+                            // Call the active method
+                                activeMethod(new WebServerRequest(httpContext), new WebServerResponse(httpContext));
+
                         }, httpSocket.GetContext());
                     }
                 }
@@ -135,19 +147,19 @@ namespace HttpServer
             httpSocket.Close();
         }
 
-        private void AddRoute(int httpMethod, string route, Func<HttpListenerRequest, string> method)
+        private void AddRoute(int httpMethod, string route, Action<WebServerRequest, WebServerResponse> method)
         {
-            if (this.Routes[httpMethod] == null)
+            if (this.ActionRoutes[httpMethod] == null)
             {
-                this.Routes[httpMethod] = new Dictionary<string, Func<HttpListenerRequest, string>>();
+                this.ActionRoutes[httpMethod] = new Dictionary<string, Action<WebServerRequest, WebServerResponse>>();
             }
 
-            this.Routes[httpMethod].Add(route, method);
+            this.ActionRoutes[httpMethod].Add(route, method);
         }
 
-        private Func<HttpListenerRequest, string> FindRouteFunction(int httpMethod, string uri)
+        private Action<WebServerRequest, WebServerResponse> FindRouteFunction(int httpMethod, string uri)
         {
-            Dictionary<string, Func<HttpListenerRequest, string>> _routes = this.Routes[httpMethod];
+            Dictionary<string, Action<WebServerRequest, WebServerResponse>> _routes = this.ActionRoutes[httpMethod];
 
             if (_routes.ContainsKey(uri))
                 return _routes[uri];
@@ -155,14 +167,14 @@ namespace HttpServer
             return NotFoundResponse;
         }
 
-        private static string NotFoundResponse(HttpListenerRequest request)
+        private static void NotFoundResponse(WebServerRequest request, WebServerResponse response)
         {
-            return string.Format("<HTML><BODY><h1>404 URL Not Found!</h1><hr/><i>{0}</i></BODY></HTML>", request.Url.OriginalString);
+            response.send(string.Format("<HTML><BODY><h1>404 URL Not Found!</h1><hr/><i>{0}</i></BODY></HTML>", request.getMethods().Url.OriginalString));
         }
 
-        private static string MethodNotImplemented(HttpListenerRequest request)
+        private static void MethodNotImplemented(WebServerRequest request, WebServerResponse response)
         {
-            return string.Format("<HTML><BODY><h1>401 Not Implemented!</h1><hr/><i>{0}</i></BODY></HTML>", request.Url.OriginalString);
+            response.send(string.Format("<HTML><BODY><h1>401 Not Implemented!</h1><hr/><i>{0}</i></BODY></HTML>", request.getMethods().Url.OriginalString));
         }
     }
 }
